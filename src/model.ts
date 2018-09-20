@@ -16,6 +16,11 @@ export function getActor(num_actions: number, state_size: number)
                 activation: 'relu'
             }),
             tf.layers.dense({
+                units: 200,
+                kernelInitializer: 'varianceScaling',
+                activation: 'relu'
+            }),
+            tf.layers.dense({
                 units: num_actions,
                 kernelInitializer: 'varianceScaling',
                 activation: 'linear'
@@ -33,6 +38,11 @@ export function getCritic(state_size: number)
     layers: [
         tf.layers.dense({
             inputShape: [state_size],
+            units: 200,
+            kernelInitializer: 'varianceScaling',
+            activation: 'relu'
+        }),
+        tf.layers.dense({
             units: 200,
             kernelInitializer: 'varianceScaling',
             activation: 'relu'

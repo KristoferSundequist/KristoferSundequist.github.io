@@ -16,8 +16,8 @@ export class Game
         this.context = context;
         this.width = width;
         this.height = height;
-        this.jumper = new Jumper(new Circle(new Point(100, 100), 30), 10, context, width, height);
-        this.enemy = new Enemy(new Circle(new Point(600,600), 50), 5, this.jumper.Body.coords, context);
+        this.jumper = new Jumper(new Circle(new Point(100, 100), 10), 20, context, width, height);
+        this.enemy = new Enemy(new Circle(new Point(600,600), 20), 5, this.jumper.Body.coords, context);
     }
 
     step(action: number): number
@@ -30,6 +30,9 @@ export class Game
             this.enemy.Body.coords.x = Math.random()*this.width;
             this.enemy.Body.coords.y = Math.random()*this.height;
             reward--;
+
+            this.jumper.Body.coords.x = Math.random()*this.width;
+            this.jumper.Body.coords.y = Math.random()*this.height;
         }
         return reward;
     }
