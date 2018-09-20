@@ -84,7 +84,7 @@ async function train(episodes: number, actors: number, episodeSize: number, epoc
         let advantages = await GAE(ep.rewards, v);
         let advantages2 = tf.tensor(advantages);
         const reward_sum = ep.rewards.reduce((acc, v) => acc + v, 0);
-        console.log(reward_sum/episodeSize)
+        console.log("Episode:", i/episodes, "Reward/EpisodeSize:",reward_sum/episodeSize)
 
         ppo(ep.states, ep.actionprobs, ep.actions, ep.values, advantages2, epochs, beta, epsilon, lr, batch_size, actor, critic)
     }
@@ -99,9 +99,9 @@ function normalize(tensor)
         return t_normalized
     })
 }
-
 function badGather(tensor, indices)
 {
+
     return tf.tidy(() => {
         return tensor.mul(tf.oneHot(indices, tensor.shape[1]).cast('float32')).sum(1)
     })
@@ -168,16 +168,16 @@ function ppo(states, actionprobs, actions, values, advantages, epochs, beta, eps
                     action_loss = action_loss.sub(entropy.mul(beta))
                     //printer("action_loss (2)", action_loss)
 
-                    console.log("Action loss:")
-                    action_loss.print()
+                    //console.log("Action loss:")
+                    //action_loss.print()
 
                     const new_values = critic.predict(states_batch).squeeze()
                     //printer("new_values", new_values)
                     const value_loss = tf.losses.meanSquaredError(returns_batch, new_values)
                     //printer("value_loss", value_loss)
 
-                    console.log("Value loss:")
-                    value_loss.print()
+                    //console.log("Value loss:")
+                    //value_loss.print()
 
                     const loss = action_loss.add(value_loss)
                     //printer("loss", loss)
