@@ -79,7 +79,7 @@ export class Jumper
     {
         this.context.beginPath();
         this.context.arc(this.Body.coords.x, this.Body.coords.y, this.Body.radius, 0, 2 * Math.PI, false);
-        this.context.fillStyle = 'green';
+        this.context.fillStyle = 'black';
         this.context.fill();
         //this.context.lineWidth = 5;
         //this.context.strokeStyle = '#003300';

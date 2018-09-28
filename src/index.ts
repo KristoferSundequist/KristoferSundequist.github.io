@@ -5,9 +5,10 @@ import {GAE} from './gae';
 
 tf.setBackend('cpu');
 
-const optimizer: any = tf.train.adam(0.0003);
-const actor = getActor(5,4);
-const critic = getCritic(4);
+
+const optimizer: any = tf.train.adam(0.0001);
+let actor = getActor(5,6);
+let critic = getCritic(6);
 const canvas_width = 900;
 const canvas_height = 900;
 
@@ -26,7 +27,6 @@ async function sleep(time) {
 // do in separate worker process
 async function getEpisode(iters: number, actor, critic): Promise<{states, actionprobs, values, actions, rewards}>
 {
-    const t1 = performance.now()
     const g = new Game(context, canvas_width, canvas_height);
     const states = []
     const actionprobs = []
@@ -50,7 +50,6 @@ async function getEpisode(iters: number, actor, critic): Promise<{states, action
         rewards.push(reward)
     }
 
-    const t2 = performance.now()
     const return_obj = tf.tidy(() => {
         return {
             states: tf.concat(states),
@@ -60,33 +59,38 @@ async function getEpisode(iters: number, actor, critic): Promise<{states, action
             rewards: rewards
         }
     })
-    console.log("concat:", performance.now()-t2)
 
     states.map(x => x.dispose());
     actionprobs.map(x => x.dispose());
     values.map(x => x.dispose());
     actions.map(x => x.dispose());
 
-    console.log(performance.now() - t1);
     return return_obj
 }
 
-//train(7, 1, 20000, 5, 0.01, 0.2,0.001,4000)
+//train(7, 1, 10000, 8, 0.01, 0.1,0.001,4000)
 async function train(episodes: number, actors: number, episodeSize: number, epochs: number, beta: number, epsilon: number, lr: number, batch_size: number)
 {
     for(let i = 0; i < episodes; i++)
     {
         // for actors ... | concat
+        const t1 = performance.now()
         const ep = await getEpisode(episodeSize, actor, critic)
-
         let v = await ep.values.data();
         v = Array.from(v);
         let advantages = await GAE(ep.rewards, v);
         let advantages2 = tf.tensor(advantages);
         const reward_sum = ep.rewards.reduce((acc, v) => acc + v, 0);
-        console.log("Episode:", i/episodes, "Reward/EpisodeSize:",reward_sum/episodeSize)
-
+        console.log("get episode time:", performance.now()-t1)
+        console.log("Episode:", i, "/", episodes, "Reward/EpisodeSize:",reward_sum/episodeSize)
+        const t2 = performance.now()
         ppo(ep.states, ep.actionprobs, ep.actions, ep.values, advantages2, epochs, beta, epsilon, lr, batch_size, actor, critic)
+        console.log("train time:", performance.now()-t2)
+        ep.states.dispose()
+        ep.actionprobs.dispose()
+        ep.actions.dispose()
+        ep.values.dispose()
+        advantages2.dispose()
     }
 }
 
@@ -118,80 +122,60 @@ function printer(msg,t)
 
 function ppo(states, actionprobs, actions, values, advantages, epochs, beta, epsilon, lr, batch_size, actor, critic)
 {
-    //printer("states", states)
-    //printer("actionprobs", actionprobs)
-    //printer("actions", actions)
-    //printer("values", values)
-    //printer("advantages", advantages)
-
-
     tf.tidy(() => {
         const returns = values.add(advantages)
-        //printer("returns", returns)
         const norm_advantages = normalize(advantages)
-        //printer("norm_advantages", norm_advantages)
-
         const old_taken_action_probs = badGather(actionprobs, actions)
-        //printer("old_taken_action_probs", old_taken_action_probs)
 
         for(let i = 0; i < epochs; i++)
         {
             tf.tidy(() => {
                 const indices = tf.randomUniform([batch_size], 0, states.shape[0], 'int32')
-                //printer("indices", indices)
                 const states_batch = states.gather(indices)
-                //printer("states_batch", states_batch)
                 const action_batch = actions.gather(indices)
-                //printer("action_batch", action_batch)
                 const old_taken_actionprobs_batch = old_taken_action_probs.gather(indices)
-                //printer("old_taken_actionprobs_batch", old_taken_actionprobs_batch)
                 const advantage_batch = norm_advantages.gather(indices)
-                //printer("advantage_batch", advantage_batch)
                 const returns_batch = returns.gather(indices)
-                //printer("returns_batch", returns_batch)
-
+                const values_batch = values.gather(indices)
+                
                 optimizer.minimize(() => {
+                    /////////////////
+                    // ACTION LOSS //
+                    /////////////////
                     const new_actionprobs = actor.predict(states_batch)
-                    //printer("new_actionprobs", new_actionprobs)
                     const new_taken_actionprobs = badGather(new_actionprobs, action_batch)
-                    //printer("new_taken_actionprobs", new_taken_actionprobs)
                     const entropy = tf.sum(actionprobs.mul(actionprobs.add(1e-08).log()), 1).neg().mean()
-                    //printer("entropy", entropy)
                     const ratio = new_taken_actionprobs.div(old_taken_actionprobs_batch)
-                    //printer("ratio", ratio)
                     const surr1 = ratio.mul(advantage_batch)
-                    //printer("surr1", surr1)
                     const surr2 = tf.clipByValue(ratio, 1-epsilon, 1+epsilon).mul(advantage_batch)
-                    //printer("surr2", surr2)
-                    let action_loss = tf.minimum(surr1, surr2).mean().neg()
-                    //printer("action_loss", action_loss)
-                    action_loss = action_loss.sub(entropy.mul(beta))
-                    //printer("action_loss (2)", action_loss)
-
-                    //console.log("Action loss:")
-                    //action_loss.print()
-
-                    const new_values = critic.predict(states_batch).squeeze()
-                    //printer("new_values", new_values)
-                    const value_loss = tf.losses.meanSquaredError(returns_batch, new_values)
-                    //printer("value_loss", value_loss)
-
-                    //console.log("Value loss:")
-                    //value_loss.print()
-
-                    const loss = action_loss.add(value_loss)
-                    //printer("loss", loss)
-
-                    return loss
+                    const action_loss_surr = tf.minimum(surr1, surr2).mean().neg() //memory leak
+                    const action_loss = action_loss_surr.sub(entropy.mul(beta))
+                    return action_loss
                 })
+                
+                
+                optimizer.minimize(() => {
+                    ////////////////
+                    // VALUE LOSS //
+                    ////////////////
+                    const new_values = critic.predict(states_batch).squeeze()
+                    const value_loss1 = new_values.sub(returns_batch).pow(2)
+                    const clipped = values_batch.add(tf.clipByValue(new_values.sub(values_batch), -epsilon, epsilon))
+                    const value_loss2 = clipped.sub(returns_batch).pow(2)
+                    const value_loss = tf.maximum(value_loss1, value_loss2).mean() //memory leak
+                    return value_loss
+                    /////////////
+                    // COMBINE //
+                    /////////////
+                    //const loss = action_loss.add(value_loss.mul(0.5))
+                    
+                    //return value_loss
+                })
+                
+                
             })
         }
     })
-    states.dispose()
-    actionprobs.dispose()
-    actions.dispose()
-    values.dispose()
-    advantages.dispose()
 }
 
 
@@ -224,6 +208,40 @@ async function agent_loop(iters)
     }
 }
 
+async function loadModels() 
+{
+    const jsonUpload = <HTMLInputElement>(document.getElementsByName('json-upload')[0]);
+    const weightsUpload = <HTMLInputElement>(document.getElementsByName('weights-upload')[0]);
+    console.log(jsonUpload);
+    actor = await tf.loadModel(tf.io.browserFiles([jsonUpload.files[0], weightsUpload.files[0]]));
+    
+    const jsonUpload2 = <HTMLInputElement>(document.getElementsByName('json-upload2')[0]);
+    const weightsUpload2 = <HTMLInputElement>(document.getElementsByName('weights-upload2')[0]);
+    critic = await tf.loadModel(tf.io.browserFiles([jsonUpload2.files[0], weightsUpload2.files[0]]));
+}
+
+function printWeights() {
+        
+}
+
+async function loadIndexed(actorstring: string, criticstring: string): Promise<void>
+{
+    actor = await tf.loadModel(`indexeddb://${actorstring}`);
+    critic = await tf.loadModel(`indexeddb://${criticstring}`);
+    (<any>window).actor = actor;
+    (<any>window).critic = critic;  
+}
+
+async function saveIndexed(actorstring: string, criticstring: string): Promise<void> 
+{
+    await (<any>actor).save(`indexeddb://${actorstring}`)
+    await (<any>critic).save(`indexeddb://${criticstring}`)
+}
+
+(<any>window).saveIndexed = saveIndexed;
+(<any>window).loadIndexed = loadIndexed;
+(<any>window).printWeights = printWeights;
+(<any>window).loadModels = loadModels;
 (<any>window).tf = tf;
 (<any>window).actor = actor;
 (<any>window).critic = critic;
@@ -232,3 +250,4 @@ async function agent_loop(iters)
 (<any>window).GAE = GAE;
 (<any>window).train = train;
 (<any>window).normalize = normalize;
+(<any>window).optimizer = optimizer;
