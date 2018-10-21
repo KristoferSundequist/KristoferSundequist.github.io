@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "test": "jest"
   },
   "author": "",
   "license": "ISC",
@@ -20,9 +20,13 @@
   "devDependencies": {
     "@babel/core": "^7.0.1",
     "@babel/preset-env": "^7.0.0",
+    "@tensorflow/tfjs": "^0.13.0",
     "@types/core-js": "^2.5.0",
+    "@types/jest": "^23.3.5",
     "babel-loader": "^8.0.2",
     "core-js": "^2.5.7",
+    "jest": "^23.6.0",
+    "ts-jest": "^23.10.4",
     "webpack": "^4.19.0"
   }
 }

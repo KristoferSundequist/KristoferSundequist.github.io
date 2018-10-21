@@ -3,18 +3,24 @@ import {Circle} from "./Circle";
 export class Jumper
 {
     Body: Circle;
-    speed: number;
     context: CanvasRenderingContext2D;
-    width: number;
-    height: number;
+    readonly maxSpeed: number;
+    readonly width: number;
+    readonly height: number;
+    readonly acc: number;
+    dx: number
+    dy: number
 
-    constructor(body: Circle, speed:number, context: CanvasRenderingContext2D, width: number, height: number)
+    constructor(body: Circle, maxSpeed: number, _acc: number, context: CanvasRenderingContext2D, width: number, height: number)
     {
         this.Body = body;
-        this.speed = speed;
+        this.maxSpeed = maxSpeed;
         this.context = context;
         this.width = width;
         this.height = height;
+        this.acc = _acc
+        this.dx = -maxSpeed + Math.random()*maxSpeed
+        this.dy = -maxSpeed + Math.random()*maxSpeed
     }
 
     step(action: number): void
@@ -24,29 +30,33 @@ export class Jumper
         {
             case 0:
             {
+                if(this.dx > -this.maxSpeed)
+                    this.dx -= this.acc
                 break;
             }
             case 1:
             {
-                this.Body.coords.x -= this.speed;
+                if(this.dy > -this.maxSpeed)
+                    this.dy -= this.acc
                 break;
             }
             case 2:
             {
-                this.Body.coords.y -= this.speed;
+                if(this.dx < this.maxSpeed)
+                    this.dx += this.acc
                 break;
             }
             case 3:
             {
-                this.Body.coords.x += this.speed;
-                break;
-            }
-            case 4:
-            {
-                this.Body.coords.y += this.speed;
+                if(this.dy < this.maxSpeed)
+                    this.dy += this.acc
                 break;
             }
         }
+        this.Body.coords.y += this.dy
+        this.Body.coords.x += this.dx
+        this.dy *= 0.99
+        this.dx *= 0.99
 
         this.enforceBounderies();
     }
@@ -54,23 +64,27 @@ export class Jumper
     enforceBounderies(): void
     {
         // Enforce x bounderies
-        if (this.Body.coords.x - this.Body.radius > this.width)
+        if (this.Body.coords.x + this.Body.radius > this.width)
         {
+            this.dx*=-1
             this.Body.coords.x = this.width - this.Body.radius;
         }
         if(this.Body.coords.x - this.Body.radius < 0)
         {
+            this.dx*=-1
             this.Body.coords.x = this.Body.radius;
         }
 
 
         //Enforce y bounderies
-        if (this.Body.coords.y - this.Body.radius > this.height)
+        if (this.Body.coords.y + this.Body.radius >= this.height)
         {
+            this.dy*=-1
             this.Body.coords.y = this.height - this.Body.radius;
         }
         if(this.Body.coords.y - this.Body.radius < 0)
         {
+            this.dy*=-1
             this.Body.coords.y = this.Body.radius;
         }
     }

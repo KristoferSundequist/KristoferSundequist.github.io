@@ -7,22 +7,22 @@ export function getActor(num_actions: number, state_size: number)
             tf.layers.dense({
                 inputShape: [state_size],
                 units: 200,
-                kernelInitializer: 'varianceScaling',
-                activation: 'relu'
+                kernelInitializer: 'glorotNormal',
+                activation: 'elu'
             }),
             tf.layers.dense({
                 units: 200,
-                kernelInitializer: 'varianceScaling',
-                activation: 'relu'
+                kernelInitializer: 'glorotNormal',
+                activation: 'elu'
             }),
             tf.layers.dense({
                 units: 200,
-                kernelInitializer: 'varianceScaling',
-                activation: 'relu'
+                kernelInitializer: 'glorotNormal',
+                activation: 'elu'
             }),
             tf.layers.dense({
                 units: num_actions,
-                kernelInitializer: 'varianceScaling',
+                kernelInitializer: 'glorotNormal',
                 activation: 'linear'
             }),
             tf.layers.softmax({
@@ -39,22 +39,22 @@ export function getCritic(state_size: number)
         tf.layers.dense({
             inputShape: [state_size],
             units: 200,
-            kernelInitializer: 'varianceScaling',
-            activation: 'relu'
+            kernelInitializer: 'glorotNormal',
+            activation: 'elu'
         }),
         tf.layers.dense({
             units: 200,
-            kernelInitializer: 'varianceScaling',
-            activation: 'relu'
+            kernelInitializer: 'glorotNormal',
+            activation: 'elu'
         }),
         tf.layers.dense({
             units: 200,
-            kernelInitializer: 'varianceScaling',
-            activation: 'relu'
+            kernelInitializer: 'glorotNormal',
+            activation: 'elu'
         }),
         tf.layers.dense({
             units: 1,
-            kernelInitializer: 'varianceScaling',
+            kernelInitializer: 'glorotNormal',
             activation: 'linear'
         })
     ]

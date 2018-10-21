@@ -3,6 +3,7 @@
     "outDir": "./dist/",
     "target": "es2015",
     "allowJs": true,
-    "types": ["core-js"]
+    "esModuleInterop": true,
+    "types": ["core-js", "jest"]
   }
 }
