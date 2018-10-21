@@ -1,4 +1,4 @@
-import {Game} from './../game_enemy_slide/Game';
+import {Game} from './../games/game_enemy_slide/Game';
 import * as tf from '@tensorflow/tfjs';
 import {getActor, getCritic} from './model';
 import {GAE, Discount} from './gae';
