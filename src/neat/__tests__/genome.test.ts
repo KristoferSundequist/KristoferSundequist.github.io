@@ -137,3 +137,22 @@ describe('add node', () => {
     })
     
 })
+
+describe('perturbWeights', () => {
+    test('simple', () => {
+        const g = networkFactory(2,2)
+        g.addConnection(0,2,7)
+        g.perturbWeights(1)
+        expect(g.connections[0][2].weight).not.toEqual(7)
+    })
+
+    test('multiple connections', () => {
+        const g = networkFactory(2,2)
+        g.addConnection(0,2,7)
+        const n = g.addNode(0,2,Linear)
+        g.perturbWeights(1)
+        expect(g.connections[0][n.innovationNumber].weight).not.toEqual(1)
+        expect(g.connections[n.innovationNumber][2].weight).not.toEqual(7)
+        expect(g.connections[0][2].weight).toEqual(7)
+    })
+})

@@ -12,4 +12,8 @@ export class Connection extends Gene {
     toggleDisabled() {
         this.disabled = !this.disabled
     }
+
+    perturbWeight(amount: number): void {
+        this.weight += ((Math.random()*2)-1)*amount
+    }
 }

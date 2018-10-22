@@ -134,4 +134,22 @@ export default class Genome {
         }
         return null
     }
+
+    forEachConnection(f: (c: Connection) => any) {
+        for(const key in this.connections){
+            for(const key2 in this.connections[key]){
+                f(this.connections[key][key2])
+            }
+        }
+    }
+
+    perturbWeights(amount: number): void {
+        this.forEachConnection(c => {
+            if(!c.disabled) {
+                c.perturbWeight(amount)
+            }
+        })
+    }
+
+
 }
