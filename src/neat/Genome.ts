@@ -2,6 +2,7 @@ import {Node} from './Node'
 import {InnovationNumberGenerator} from './InnovationNumberGenerator'
 import {Connection} from './Connection'
 import {Sigmoid, Linear} from './Utils'
+import { Gene } from './Gene';
 
 function copy(o) {
     return JSON.parse(JSON.stringify(o))
@@ -15,6 +16,7 @@ export default class Genome {
     hiddenNodes: {[n: number]: Node} = {}
     connections: {[n: number]: {[n: number]: Connection}} = {}
     ing: InnovationNumberGenerator
+    numGenes: number = 0
 
     constructor(nInputs: number, nOutputs: number, ing: InnovationNumberGenerator) {
         this.nInputs = nInputs
@@ -22,17 +24,6 @@ export default class Genome {
         this.ing = ing
 
         this.init()
-        //this.testData()
-    }
-
-    testData() {
-        this.connections[0][21] = new Connection(1, 20)
-        this.hiddenNodes[21] = new Node(21, Sigmoid)
-        this.connections[21] = {23: new Connection(1, 22)}
-        this.hiddenNodes[23] = new Node(23, Sigmoid)
-        this.connections[23] = {8: new Connection(1, 24)}
-        this.connections[23][21] = new Connection(1,25) //recurrent connection
-        //this.connections[23][21].toggleDisabled()
     }
 
     init() {
@@ -118,6 +109,7 @@ export default class Genome {
         }
         if (!this.connections[a][b]) {
             this.connections[a][b] = new Connection(weight, this.ing.next)
+            this.numGenes++
         }
     }
 
@@ -151,5 +143,102 @@ export default class Genome {
         })
     }
 
+    copy(): Genome {
+        const g = new Genome(this.nInputs, this.nOutputs, this.ing)
+        g.numGenes = this.numGenes
 
+        // Copy hidden nodes
+        for(const key in this.hiddenNodes) {
+            g.hiddenNodes[key] = new Node(this.hiddenNodes[key].innovationNumber, this.hiddenNodes[key].activation)
+        }
+
+        // copy connections
+        for(const key in this.connections){
+            if(!g.connections[key]){
+                g.connections[key] = {}
+            }
+            for(const key2 in this.connections[key]){
+                g.connections[key][key2] = new Connection(this.connections[key][key2].weight, this.connections[key][key2].innovationNumber)
+                g.connections[key][key2].disabled = this.connections[key][key2].disabled
+            }
+        }
+
+        return g
+    }
+
+    // assumes that a is more fit than b
+    static crossOver(a: Genome, b: Genome, wInheritance: number = .5, disable: number = .75): Genome {
+        const cross = a.copy()
+        for(const key in a.connections){
+            if(b.connections[key]){
+                for(const key2 in a.connections[key]){
+                    if(b.connections[key][key2]){
+                        if(a.connections[key][key2].innovationNumber === b.connections[key][key2].innovationNumber){
+                            // randomly take weight from parents
+                            if(Math.random() < wInheritance) {
+                                cross.connections[key][key2].weight = b.connections[key][key2].weight
+                            }
+
+                            //disable if either parent is disabled
+                            if(Math.random() < disable) {
+                                if(a.connections[key][key2].disabled || b.connections[key][key2].disabled) {
+                                    cross.connections[key][key2].disabled = true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return cross
+    }
+
+    static delta(a: Genome, b: Genome, ct: number, cw: number): number 
+    {
+        let T = 0
+        let W = 0
+        let nW = 0
+
+        for(const key in a.connections)
+        {
+            for(const key2 in a.connections[key])
+            {
+                if(!b.connections[key])
+                {
+                    T++
+                    continue
+                }
+                if(!b.connections[key][key2] || (a.connections[key][key2].innovationNumber !== b.connections[key][key2].innovationNumber))
+                {
+                    T++
+                    continue
+                }
+                W += Math.abs(a.connections[key][key2].weight - b.connections[key][key2].weight)
+                nW++
+            }
+        }
+
+        for(const key in b.connections)
+        {
+            for(const key2 in b.connections[key])
+            {
+                if(!a.connections[key])
+                {
+                    T++
+                    continue
+                }
+                if(!a.connections[key][key2] || (a.connections[key][key2].innovationNumber !== b.connections[key][key2].innovationNumber))
+                {
+                    T++
+                    continue
+                }
+            }
+        }
+ 
+        const wr = (nW === 0) ? 0 : cw*(W/nW)
+        const maxGenes = Math.max(a.numGenes, b.numGenes)
+        const cr = (maxGenes === 0) ? 0 : ct*(T/maxGenes)
+        return cr + wr
+    }
 }

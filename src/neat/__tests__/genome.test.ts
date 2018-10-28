@@ -1,6 +1,6 @@
 import Genome from './../Genome'
 import {InnovationNumberGenerator} from './../InnovationNumberGenerator'
-import { Linear, Sigmoid } from '../Utils';
+import { Linear, Sigmoid, deepCopy } from '../Utils';
 
 function networkFactory(nInp, nOut){
     const start = nInp+nOut
@@ -154,5 +154,171 @@ describe('perturbWeights', () => {
         expect(g.connections[0][n.innovationNumber].weight).not.toEqual(1)
         expect(g.connections[n.innovationNumber][2].weight).not.toEqual(7)
         expect(g.connections[0][2].weight).toEqual(7)
+    })
+})
+
+describe('utils', () => {
+
+})
+
+describe('innovationNumber', () => {
+    test('diff innnovationnumber copy', () => {
+        const nInp = 2
+        const nOut = 2
+        const start = nInp+nOut
+        const ing = new InnovationNumberGenerator(start)
+        const g1 = new Genome(nInp,nOut, ing)
+        g1.addConnection(0,2,2)
+        const g2 = g1.copy()
+        g2.addConnection(0,3,2)
+        expect(g1.connections[0][2].innovationNumber).toEqual(4)
+        expect(g2.connections[0][3].innovationNumber).toEqual(5)
+    })
+
+    test('diff innnovationnumber copy', () => {
+        const nInp = 2
+        const nOut = 2
+        const start = nInp+nOut
+        const ing = new InnovationNumberGenerator(start)
+        const g1 = new Genome(nInp,nOut, ing)
+        const g2 = new Genome(nInp,nOut, ing)
+        g1.addConnection(0,2,2)
+        g1.addConnection(1,3,10)
+        g2.addConnection(0,2,2)
+        expect(g1.connections[0][2].innovationNumber).toEqual(4)
+        expect(g2.connections[0][2].innovationNumber).toEqual(6)
+    })
+})
+
+describe('crossOver', () => {
+    test('copy test', () => {
+        const nInp = 2
+        const nOut = 2
+        const start = nInp+nOut
+        const ing = new InnovationNumberGenerator(start)
+        const g1 = new Genome(nInp,nOut, ing)
+        g1.addConnection(0,2,2)
+        const g2 = g1.copy()
+        expect(g1.connections[0][2].weight).toEqual(g2.connections[0][2].weight)
+        g2.perturbWeights(2)
+        expect(g1.connections[0][2].weight).not.toEqual(g2.connections[0][2].weight)
+    })
+
+    test('simple crossover', () => {
+        const nInp = 2
+        const nOut = 2
+        const start = nInp+nOut
+        const ing = new InnovationNumberGenerator(start)
+        const g1 = new Genome(nInp,nOut, ing)
+        g1.addConnection(0,2,2)
+        const g2 = g1.copy()
+        g2.perturbWeights(2)
+        g2.addConnection(1,3,2)
+        const cross = Genome.crossOver(g2,g1)
+        expect(cross.connections[1][3].weight).toEqual(g2.connections[1][3].weight)
+        expect(cross.connections[0][2].weight === g2.connections[0][2].weight || 
+            cross.connections[0][2].weight === g1.connections[0][2].weight)
+            .toBeTruthy()
+    })
+
+    test('simple crossover 2', () => {
+        const nInp = 2
+        const nOut = 2
+        const start = nInp+nOut
+        const ing = new InnovationNumberGenerator(start)
+        const g1 = new Genome(nInp,nOut, ing)
+        g1.addConnection(0,2,2)
+        const g2 = g1.copy()
+        g2.perturbWeights(2)
+        g2.addConnection(1,3,2)
+        const cross = Genome.crossOver(g2,g1)
+        expect(cross.connections[1][3].weight).toEqual(g2.connections[1][3].weight)
+        expect(cross.connections[0][2].weight === g2.connections[0][2].weight || 
+            cross.connections[0][2].weight === g1.connections[0][2].weight)
+            .toBeTruthy()
+    })
+
+    test('fitness crossover', () => {
+        const nInp = 2
+        const nOut = 2
+        const start = nInp+nOut
+        const ing = new InnovationNumberGenerator(start)
+        const g1 = new Genome(nInp,nOut, ing)
+        g1.addConnection(0,2,2)
+        const i = g1.addNode(0,2,Sigmoid)
+        const g2 = g1.copy()
+        g2.addConnection(1,3,2)
+        const cross = Genome.crossOver(g1,g2)
+        expect(cross.connections[1]).toBeUndefined()
+        expect(cross.connections[i.innovationNumber][2].weight).toEqual(g1.connections[i.innovationNumber][2].weight)
+    })
+})
+
+describe('delta', () => {
+
+    test('same delta when copy', () => {
+        const nInp = 2
+        const nOut = 2
+        const start = nInp+nOut
+        const ing = new InnovationNumberGenerator(start)
+        const g1 = new Genome(nInp,nOut, ing)
+        g1.addConnection(0,2,2)
+        const g2 = g1.copy()
+        expect(Genome.delta(g1,g2, 1 ,1)).toEqual(0)
+    })
+
+    test('simple delta', () => {
+        const nInp = 2
+        const nOut = 2
+        const start = nInp+nOut
+        const ing = new InnovationNumberGenerator(start)
+        const g1 = new Genome(nInp,nOut, ing)
+        g1.addConnection(0,2,2)
+        const g2 = g1.copy()
+        g2.addConnection(0,3,1)
+        expect(Genome.delta(g1,g2, 1 ,1)).toEqual(1/2)
+    })
+
+    test('simple delta 2', () => {
+        const nInp = 2
+        const nOut = 2
+        const start = nInp+nOut
+        const ing = new InnovationNumberGenerator(start)
+        const g1 = new Genome(nInp,nOut, ing)
+        g1.addConnection(0,2,2)
+        const g2 = g1.copy()
+        g1.addConnection(0,3,5)
+        g2.addNode(0,2,Sigmoid)
+        g2.connections[0][2].weight = 5
+        expect(Genome.delta(g1,g2, 1 ,1)).toEqual(3/3 + 3)
+    })
+
+    test('diff innovation number same connection', () => {
+        const nInp = 2
+        const nOut = 2
+        const start = nInp+nOut
+        const ing = new InnovationNumberGenerator(start)
+        const g1 = new Genome(nInp,nOut, ing)
+        const g2 = g1.copy()
+        g1.addConnection(0,2,2)
+        g2.addConnection(0,2,2)
+        expect(Genome.delta(g1,g2, 1 ,1)).toEqual(2)
+    })
+})
+
+describe('numGenes', () => {
+    test('simple', () => {
+        const nInp = 2
+        const nOut = 2
+        const start = nInp+nOut
+        const ing = new InnovationNumberGenerator(start)
+        const g1 = new Genome(nInp,nOut, ing)
+        g1.addConnection(0,2,2)
+        const g2 = g1.copy()
+        g1.addConnection(0,3,5)
+        g2.addNode(0,2,Sigmoid)
+        g2.connections[0][2].weight = 5
+        expect(g1.numGenes).toEqual(2)
+        expect(g2.numGenes).toEqual(3)
     })
 })

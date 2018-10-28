@@ -4,6 +4,7 @@
     "target": "es2015",
     "allowJs": true,
     "esModuleInterop": true,
-    "types": ["core-js", "jest"]
+    "types": ["core-js", "jest"],
+    "lib": [ "es7", "dom" ]
   }
 }
