@@ -17,12 +17,12 @@ export default class Genome {
     connections: {[n: number]: {[n: number]: Connection}} = {}
     ing: InnovationNumberGenerator
     numGenes: number = 0
+    fitness: number = NaN
 
     constructor(nInputs: number, nOutputs: number, ing: InnovationNumberGenerator) {
         this.nInputs = nInputs
         this.nOutputs = nOutputs
         this.ing = ing
-
         this.init()
     }
 
