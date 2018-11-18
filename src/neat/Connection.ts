@@ -1,4 +1,5 @@
 import {Gene} from './Gene'
+import {uniformRandom} from './Utils'
 
 export class Connection extends Gene {
     weight: number
@@ -14,6 +15,10 @@ export class Connection extends Gene {
     }
 
     perturbWeight(amount: number): void {
-        this.weight += ((Math.random()*2)-1)*amount
+        this.weight += uniformRandom()*amount
+    }
+
+    resetWeight(): void {
+        this.weight = uniformRandom()
     }
 }

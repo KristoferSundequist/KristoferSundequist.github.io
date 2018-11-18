@@ -1,7 +1,7 @@
 import {Node} from './Node'
 import {InnovationNumberGenerator} from './InnovationNumberGenerator'
 import {Connection} from './Connection'
-import {Sigmoid, Linear} from './Utils'
+import {Sigmoid, Linear, randomKey, multinomial} from './Utils'
 import { Gene } from './Gene';
 
 function copy(o) {
@@ -18,12 +18,39 @@ export default class Genome {
     ing: InnovationNumberGenerator
     numGenes: number = 0
     fitness: number = NaN
+    adjustedFitness: number = 0
+    normalFitness: number = 0
+    alive: boolean
 
     constructor(nInputs: number, nOutputs: number, ing: InnovationNumberGenerator) {
         this.nInputs = nInputs
         this.nOutputs = nOutputs
         this.ing = ing
+        this.alive = true
         this.init()
+    }
+
+    getConnectionCandidate(): [number, number] | null
+    {
+        const inp = {...this.hiddenNodes, ...this.inputNodes}
+        const out = {...this.hiddenNodes, ...this.outputNodes}
+
+        let inpk
+        let outk
+        for(let i = 0; i < 100; i++){
+            inpk = randomKey(inp)
+            outk = randomKey(out)
+            if(!this.connections[inpk] || !this.connections[inpk][outk]){
+                return [Number(randomKey(inp)), Number(randomKey(out))]
+            }
+        }
+        return null
+    }
+
+    getNodeCandidate(): [number, number] {
+        const inpk = randomKey(this.connections)
+        const outk = randomKey(this.connections[inpk])
+        return [Number(inpk), Number(outk)]
     }
 
     init() {
@@ -92,9 +119,9 @@ export default class Genome {
     getAction(input: number[]): number {
         const outs = this.forward(input)
 
-        let curMax = input[0]
+        let curMax = outs[0]
         let curMaxIndex = 0
-        for(let i = 0; i < input.length; i++) {
+        for(let i = 0; i < outs.length; i++) {
             if(outs[i] > curMax) {
                 curMax = outs[i]
                 curMaxIndex = i
@@ -103,21 +130,35 @@ export default class Genome {
         return curMaxIndex
     }
 
-    addConnection(a: number, b: number, weight: number){
+    
+    getSoftmax(input: number[]): number[] {
+        const outs = this.forward(input)
+        const sum = outs.reduce((acc, v) => Math.exp(v) + acc, 0)
+        return outs.map(v => Math.exp(v)/sum)
+    }
+    
+    getActionSoftmax(input: number[]): number {
+        return multinomial(this.getSoftmax(input))
+    }
+
+    addConnection(a: number, b: number, weight: number, iNumber?: number){
         if (!this.connections[a]) {
             this.connections[a] = {}
         }
         if (!this.connections[a][b]) {
-            this.connections[a][b] = new Connection(weight, this.ing.next)
+            if(!iNumber)
+                iNumber = this.ing.next
+            this.connections[a][b] = new Connection(weight, iNumber) 
             this.numGenes++
         }
     }
 
-    addNode(a: number, b: number, activation: (n: number) => number): Node | null {
+    addNode(a: number, b: number, activation: (n: number) => number, iNumber?: number): Node | null {
         if(this.connections[a] && this.connections[a][b] && !this.connections[a][b].disabled){
             const oldConnection = this.connections[a][b]
             oldConnection.toggleDisabled()
-            const iNumber = this.ing.next
+            if (!iNumber)
+                iNumber = this.ing.next
             const n = new Node(iNumber, activation)
             this.hiddenNodes[iNumber] = n
             this.addConnection(a, iNumber, 1)
@@ -146,6 +187,10 @@ export default class Genome {
     copy(): Genome {
         const g = new Genome(this.nInputs, this.nOutputs, this.ing)
         g.numGenes = this.numGenes
+        g.fitness = this.fitness
+        g.adjustedFitness = this.adjustedFitness
+        g.normalFitness = this.normalFitness
+        g.alive = this.alive
 
         // Copy hidden nodes
         for(const key in this.hiddenNodes) {
@@ -238,7 +283,8 @@ export default class Genome {
  
         const wr = (nW === 0) ? 0 : cw*(W/nW)
         const maxGenes = Math.max(a.numGenes, b.numGenes)
-        const cr = (maxGenes === 0) ? 0 : ct*(T/maxGenes)
+        const N = maxGenes < 20 ? 1 : maxGenes
+        const cr = (maxGenes === 0) ? 0 : ct*(T/N)
         return cr + wr
     }
 }

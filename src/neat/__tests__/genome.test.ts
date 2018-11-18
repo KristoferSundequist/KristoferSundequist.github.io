@@ -276,7 +276,7 @@ describe('delta', () => {
         g1.addConnection(0,2,2)
         const g2 = g1.copy()
         g2.addConnection(0,3,1)
-        expect(Genome.delta(g1,g2, 1 ,1)).toEqual(1/2)
+        expect(Genome.delta(g1,g2, 1 ,1)).toEqual(1)
     })
 
     test('simple delta 2', () => {
@@ -290,7 +290,7 @@ describe('delta', () => {
         g1.addConnection(0,3,5)
         g2.addNode(0,2,Sigmoid)
         g2.connections[0][2].weight = 5
-        expect(Genome.delta(g1,g2, 1 ,1)).toEqual(3/3 + 3)
+        expect(Genome.delta(g1,g2, 1 ,1)).toEqual(3 + 3)
     })
 
     test('diff innovation number same connection', () => {

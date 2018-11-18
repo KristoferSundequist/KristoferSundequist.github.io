@@ -1,34 +1,20 @@
-import {Game} from './../games/game_enemy_slide/Game';
+import {Game} from './../games/simple_enemy/Game';
 import * as tf from '@tensorflow/tfjs';
 import {getActor, getCritic} from './model';
 import {GAE, Discount} from './gae';
 import {IGame} from './../IGame'
+import {sleep} from '../common'
+import {context, canvas_width, canvas_height} from './../index'
 
 tf.setBackend('cpu')
 
 export const optimizer: any = tf.train.adam(0.0003,0.9,0.999,1e-05);
 export let actor = getActor(Game.action_space_size, Game.state_space_size);
 export let critic = getCritic(Game.state_space_size);
-const canvas_width = 700;
-const canvas_height = 700;
-
 
 //const w = BuildWorker(Calc)
 //w.onmessage = e => console.log(e.data)
 //w.postMessage(3)
-
-
-const canv=document.createElement("canvas");
-const context = canv.getContext("2d");
-canv.id = "canvasID";
-canv.height = canvas_height;
-canv.width = canvas_width;
-canv.style.border = "thick solid black";
-document.body.appendChild(canv);
-
-export async function sleep(time) {
-    return new Promise(resolve => setTimeout(resolve, time));
-}
 
 // do in separate worker process
 export function getEpisode(iters: number, actor, critic): {states, actionprobs, values, actions, rewards, advantages, discounted_rewards}
@@ -153,10 +139,10 @@ export function printer(msg,t)
 export function ppo(states, actionprobs, actions, values, advantages, discounted_rewards, epochs, beta, epsilon, lr, batch_size, actor, critic)
 {
     tf.tidy(() => {
-        //const returns = values.add(advantages)
-        //const norm_advantages = normalize(advantages)
-        const returns = discounted_rewards
-        const norm_advantages = normalize(discounted_rewards.sub(values))
+        const returns = values.add(advantages)
+        const norm_advantages = normalize(advantages)
+        //const returns = discounted_rewards
+        //const norm_advantages = normalize(discounted_rewards.sub(values))
         const old_taken_action_probs = badGather(actionprobs, actions)
 
         for(let i = 0; i < epochs; i++)
