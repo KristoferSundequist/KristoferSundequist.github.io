@@ -3,6 +3,11 @@ const path = require('path');
 module.exports = {
   entry: './src/index.ts',
   devtool: 'source-map',
+  mode: 'development',
+  node: {
+    child_process: 'empty',
+    fs: 'empty'
+  },
   module: {
     rules: [
       {

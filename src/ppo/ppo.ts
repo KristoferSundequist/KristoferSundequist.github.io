@@ -1,14 +1,18 @@
-import {Game} from './../games/simple_enemy/Game';
+import {Game} from './../games/simple_game/Game'
 import * as tf from '@tensorflow/tfjs';
 import {getActor, getCritic} from './model';
 import {GAE, Discount} from './gae';
 import {IGame} from './../IGame'
-import {sleep} from '../common'
+import {sleep} from '../Utils'
 import {context, canvas_width, canvas_height} from './../index'
 
 tf.setBackend('cpu')
+export const tfMemory = () => console.log(tf.memory())
+export const tff = tf
+export const gae = GAE
 
-export const optimizer: any = tf.train.adam(0.0003,0.9,0.999,1e-05);
+export const optimizer_pi: any = tf.train.adam(0.0003,0.9,0.999,1e-05);
+export const optimizer_vf: any = tf.train.adam(0.001,0.9,0.999,1e-05);
 export let actor = getActor(Game.action_space_size, Game.state_space_size);
 export let critic = getCritic(Game.state_space_size);
 
@@ -61,10 +65,9 @@ export function getEpisode(iters: number, actor, critic): {states, actionprobs, 
     })
 }
 
-//train(7, 1, 10000, 8, 0.01, 0.1,0.001,4000)
-export function train(episodes: number, actors: number, episodeSize: number, epochs: number, beta: number, epsilon: number, lr: number, batch_size: number)
+//train(7, 10, 6000, 10, 0.02, 0.1, 4000)
+export function train(episodes: number, actors: number, episodeSize: number, epochs: number, beta: number, epsilon: number, batch_size: number)
 {
-    optimizer.learningRate = lr
     for(let i = 0; i < episodes; i++)
     {
         tf.tidy(() => {
@@ -104,7 +107,7 @@ export function train(episodes: number, actors: number, episodeSize: number, epo
             console.log("get episode time:", performance.now()-t1)
             console.log("Episode:", i, "/", episodes, "Reward/EpisodeSize:",reward_sum/(episodeSize*actors))
             const t2 = performance.now()
-            ppo(states, actionprobs, actions, values, advantages, dr, epochs, beta, epsilon, lr, batch_size, actor, critic)
+            ppo(states, actionprobs, actions, values, advantages, dr, epochs, beta, epsilon, batch_size, actor, critic)
             console.log("train time:", performance.now()-t2)
         })
     }
@@ -136,19 +139,37 @@ export function printer(msg,t)
 
 }
 
-export function ppo(states, actionprobs, actions, values, advantages, discounted_rewards, epochs, beta, epsilon, lr, batch_size, actor, critic)
+export function getIndices(n, max)
+{
+    const inds = new Set
+    while(inds.size < n)
+    {
+        inds.add(Math.random()*max << 0)
+    }
+    return tf.tensor(Array.from(inds)).cast('int32')
+}
+
+export function ppo(states, actionprobs, actions, values, advantages, discounted_rewards, epochs, beta, epsilon, batch_size, actor, critic)
 {
     tf.tidy(() => {
-        const returns = values.add(advantages)
-        const norm_advantages = normalize(advantages)
+        //const returns = values.add(advantages)
+        const returns = discounted_rewards
+        //const norm_advantages = normalize(advantages)
+        //const norm_advantages = discounted_rewards.sub(values)
+        const norm_advantages = normalize(discounted_rewards.sub(values))
+        //const norm_advantages = discounted_rewards.sub(values)
         //const returns = discounted_rewards
-        //const norm_advantages = normalize(discounted_rewards.sub(values))
+        //const norm_advantages = normalize(discounted_rewards)
+
+        //const returns = discounted_rewards;
+        //const norm_advantages = normalize(advantages);
+
         const old_taken_action_probs = badGather(actionprobs, actions)
 
         for(let i = 0; i < epochs; i++)
         {
-            tf.tidy(() => {
-                const indices = tf.randomUniform([batch_size], 0, states.shape[0], 'int32')
+                //const indices = tf.randomUniform([batch_size], 0, states.shape[0], 'int32')
+                const indices = getIndices(batch_size, states.shape[0])
                 const states_batch = states.gather(indices)
                 const action_batch = actions.gather(indices)
                 const old_taken_actionprobs_batch = old_taken_action_probs.gather(indices)
@@ -156,7 +177,7 @@ export function ppo(states, actionprobs, actions, values, advantages, discounted
                 const returns_batch = returns.gather(indices)
                 const values_batch = values.gather(indices)
                 
-                optimizer.minimize(() => {
+                optimizer_pi.minimize(() => {
                     /////////////////
                     // ACTION LOSS //
                     /////////////////
@@ -168,7 +189,10 @@ export function ppo(states, actionprobs, actions, values, advantages, discounted
                     const surr2 = tf.clipByValue(ratio, 1-epsilon, 1+epsilon).mul(advantage_batch)
                     const action_loss_surr = tf.minimum(surr1, surr2).mean().neg() //memory leak
                     const action_loss = action_loss_surr.sub(entropy)
+                    return action_loss
+                })
                 
+                optimizer_vf.minimize(() => {
                     ////////////////
                     // VALUE LOSS //
                     ////////////////
@@ -176,16 +200,11 @@ export function ppo(states, actionprobs, actions, values, advantages, discounted
                     const value_loss1 = new_values.sub(returns_batch).pow(2)
                     const clipped = values_batch.add(tf.clipByValue(new_values.sub(values_batch), -epsilon, epsilon))
                     const value_loss2 = clipped.sub(returns_batch).pow(2)
-                    const value_loss = tf.maximum(value_loss1, value_loss2).mean() //memory leak
-
-                    ///////////
-                    // TOTAL //
-                    ///////////
-                    return action_loss.add(value_loss)
+                    const value_loss = tf.maximum(value_loss1, value_loss2).mean().mul(tf.scalar(0.5)) //memory leak
+                    return value_loss
                 })
                 
                 
-            })
         }
     })
 }

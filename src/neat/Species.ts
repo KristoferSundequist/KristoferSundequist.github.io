@@ -53,7 +53,8 @@ export default class Species {
     // assumes that this.members is sorted by adjfitness
     markBadGenomes(survivalRate: number): void
     {   
-        for(let i = (this.members.length*survivalRate << 0); i < this.members.length; i++)
+        if(this.members.length == 1) return
+        for(let i = Math.ceil(this.members.length*survivalRate); i < this.members.length; i++)
         {
             this.members[i].alive = false
         }

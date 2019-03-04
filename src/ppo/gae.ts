@@ -1,10 +1,10 @@
-export function GAE(rewards: number[], values: number[], gamma:number = 0.99, lambda:number = 0.95)
+export function GAE(rewards: number[], values: number[], gamma:number = 0.99, lambda:number = 0.95) : number[]
 {
     values = values.slice()
     values.push(values[values.length-1])
 
     const gaes = []
-    let gae = values[values.length-1]
+    let gae = 0
     for(let i = rewards.length-1; i >= 0; i--)
     {
         const delta = rewards[i] + gamma*values[i+1] - values[i]
@@ -14,7 +14,7 @@ export function GAE(rewards: number[], values: number[], gamma:number = 0.99, la
     return gaes
 }
 
-export function Discount(rewards: number[], gamma:number = 0.99, init)
+export function Discount(rewards: number[], gamma:number = 0.99, init) : number[]
 {
     const returns = []
     let R = init

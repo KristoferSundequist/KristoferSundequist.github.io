@@ -6,23 +6,18 @@ export function getActor(num_actions: number, state_size: number)
         layers: [
             tf.layers.dense({
                 inputShape: [state_size],
-                units: 200,
-                kernelInitializer: 'glorotNormal',
-                activation: 'elu'
+                units: 300,
+                kernelInitializer: 'orthogonal',
+                activation: 'relu'
             }),
             tf.layers.dense({
-                units: 200,
-                kernelInitializer: 'glorotNormal',
-                activation: 'elu'
-            }),
-            tf.layers.dense({
-                units: 200,
-                kernelInitializer: 'glorotNormal',
-                activation: 'elu'
+                units: 300,
+                kernelInitializer: 'orthogonal',
+                activation: 'relu'
             }),
             tf.layers.dense({
                 units: num_actions,
-                kernelInitializer: 'glorotNormal',
+                kernelInitializer: 'orthogonal',
                 activation: 'linear'
             }),
             tf.layers.softmax({
@@ -38,23 +33,18 @@ export function getCritic(state_size: number)
     layers: [
         tf.layers.dense({
             inputShape: [state_size],
-            units: 200,
-            kernelInitializer: 'glorotNormal',
-            activation: 'elu'
+            units: 300,
+            kernelInitializer: 'orthogonal',
+            activation: 'relu'
         }),
         tf.layers.dense({
-            units: 200,
-            kernelInitializer: 'glorotNormal',
-            activation: 'elu'
-        }),
-        tf.layers.dense({
-            units: 200,
-            kernelInitializer: 'glorotNormal',
-            activation: 'elu'
+            units: 300,
+            kernelInitializer: 'orthogonal',
+            activation: 'relu'
         }),
         tf.layers.dense({
             units: 1,
-            kernelInitializer: 'glorotNormal',
+            kernelInitializer: 'orthogonal',
             activation: 'linear'
         })
     ]

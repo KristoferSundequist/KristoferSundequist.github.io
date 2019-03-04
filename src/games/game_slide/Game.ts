@@ -11,16 +11,16 @@ export class Game
     private width: number;
     private height: number;
     private jumperSpeed: number
-    public static state_space_size: number = 4
+    public static state_space_size: number = 6
     public static action_space_size: number = 4
 
     constructor(context: CanvasRenderingContext2D, width: number, height: number)
     {
-        this.jumperSpeed = 20
+        this.jumperSpeed = 10
         this.context = context;
         this.width = width;
         this.height = height;
-        this.jumper = new Jumper(new Circle(new Point(Math.random()*this.width, Math.random()*this.height), 30), this.jumperSpeed, context, width, height);
+        this.jumper = new Jumper(new Circle(new Point(Math.random()*this.width, Math.random()*this.height), 30), this.jumperSpeed, 0.5, context, width, height);
         this.reward = new Reward(new Circle(new Point(Math.random()*this.width, Math.random()*this.height), 50), context);
     }
 
@@ -33,7 +33,7 @@ export class Game
         {
             this.reward.Body.coords.x = Math.random()*this.width;
             this.reward.Body.coords.y = Math.random()*this.height;
-            reward += 1;
+            reward++;
         }
 
         return reward;
@@ -41,12 +41,7 @@ export class Game
 
     getState(): Array<number>
     {
-        return [
-            this.jumper.Body.coords.x/this.width,
-            this.jumper.Body.coords.y/this.height,
-            this.reward.Body.coords.x/this.width,
-            this.reward.Body.coords.y/this.height
-        ]
+        return [this.jumper.Body.coords.x/this.width, this.jumper.Body.coords.y/this.height, this.jumper.dx/this.jumperSpeed, this.jumper.dy/this.jumperSpeed, this.reward.Body.coords.x/this.width, this.reward.Body.coords.y/this.height]
     }
 
     render()

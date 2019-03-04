@@ -1,6 +1,6 @@
 import Genome from './../Genome'
 import {InnovationNumberGenerator} from './../InnovationNumberGenerator'
-import { Linear, Sigmoid, deepCopy } from '../Utils';
+import { Linear, Sigmoid, deepCopy } from '../../Utils';
 
 function networkFactory(nInp, nOut){
     const start = nInp+nOut
@@ -8,6 +8,7 @@ function networkFactory(nInp, nOut){
     const g = new Genome(nInp,nOut, ing)
     return g
 }
+
 describe('basic', () => {
     test('no connections returns zeroes', () => {
         const g = networkFactory(2,2)
@@ -121,6 +122,132 @@ describe('add node', () => {
         expect(o).toEqual(o2)
     })
 
+    test('getConnectionCandidate 1', () => {
+        for(let i = 0; i < 100; i++)
+        {
+            const g = networkFactory(2,2)
+            const [a,b] = g.getConnectionCandidate()
+            expect(a).toBeLessThan(2)
+            expect(b).toBeGreaterThan(1)
+            expect(b).toBeLessThan(4)
+            expect(b).toBeGreaterThan(a)
+        }
+    })
+
+    test('getConnectionCandidate 2', () => {
+        const g = networkFactory(2,2)
+        g.addConnection(0,2,2)
+        g.addNode(0,2,Linear)
+        g.addNode(0,5,Linear)
+        g.addNode(8,5,Linear)
+        g.addNode(5,2,Linear)
+        g.addConnection(1,3,2)
+        g.addNode(1,3,Linear)
+        g.connections[5][2].toggleDisabled()
+        g.connections[0][5].toggleDisabled()
+        for(let i = 0; i < 100; i++)
+            {
+            const [a,b] = g.getConnectionCandidate()
+            expect(a).not.toEqual(2)
+            expect(a).not.toEqual(3)
+            expect(b).not.toEqual(0)
+            expect(b).not.toEqual(1)
+        }
+    })
+
+    test('getConnectionCand 3', () => {
+        const g = networkFactory(6,4)
+        for(let i = 0; i < 100; i++)
+        {
+            const [a,b] = g.getConnectionCandidate()
+            expect(a).toBeLessThan(6)
+            expect(b).toBeGreaterThan(5)
+        }        
+    })
+
+    test('simple node order', () => {
+        const g = networkFactory(2,2)
+        g.addConnection(0,2,2)
+        g.addNode(0,2,Linear)
+        expect(g.nodeOrder.ings).toEqual([5])
+    })
+
+    test('more node order', () => {
+        const g = networkFactory(2,2)
+        g.addConnection(0,2,2)
+        g.addNode(0,2,Linear)
+        g.addNode(0,5,Linear)
+        expect(g.nodeOrder.ings).toEqual([8,5])
+    })
+
+    test('more node order 2', () => {
+        const g = networkFactory(2,2)
+        g.addConnection(0,2,2)
+        g.addNode(0,2,Linear)
+        g.addNode(0,5,Linear)
+        g.addNode(8,5,Linear)
+        expect(g.nodeOrder.ings).toEqual([8,11,5])
+    })
+
+    test('more node order 3', () => {
+        const g = networkFactory(2,2)
+        g.addConnection(0,2,2)
+        g.addNode(0,2,Linear)
+        g.addNode(0,5,Linear)
+        g.addNode(8,5,Linear)
+        g.addNode(5,2,Linear)
+        expect(g.nodeOrder.ings).toEqual([8,11,5,14])
+    })
+
+    test('more node order 5', () => {
+        const g = networkFactory(2,2)
+        g.addConnection(0,2,2)
+        g.addNode(0,2,Linear)
+        g.addNode(0,5,Linear)
+        g.addNode(8,5,Linear)
+        g.addNode(5,2,Linear)
+        g.addConnection(1,3,1)
+        g.addNode(1,3,Linear)
+        expect(g.nodeOrder.ings).toEqual([18,8,11,5,14])
+    })
+
+    test('new forward', () => {
+        const g = networkFactory(2,2)
+        g.addConnection(0,2,2)
+        g.addNode(0,2,Linear)
+        g.addNode(0,5,Linear)
+        g.addNode(8,5,Linear)
+        g.addNode(5,2,Linear)
+        g.addConnection(1,3,2)
+        g.addNode(1,3,Linear)
+        const o = g.forward([1,1])
+        expect(o).toEqual([2,2])
+    })
+
+    test('new forward 2', () => {
+        const g = networkFactory(2,2)
+        g.addConnection(0,2,2)
+        g.addNode(0,2,Linear)
+        g.addNode(0,5,Linear)
+        g.addNode(8,5,Linear)
+        g.addNode(5,2,Linear)
+        g.addConnection(1,3,2)
+        g.addNode(1,3,Linear)
+        g.connections[5][2].toggleDisabled()
+        g.connections[0][5].toggleDisabled()
+        const o = g.forward([1,1], false)
+        expect(o).toEqual([8,2])
+    })
+
+    test('optional', () => {
+        const g = networkFactory(2,2)
+        const abc = g.testOptional()
+        expect(abc).toEqual(3)
+        const abc2 = g.testOptional(88)
+        expect(abc2).toEqual(88)
+    })
+
+    /*
     test('reccurent', () => {
         const g = networkFactory(2,2)
         g.addConnection(0,2,7)
@@ -133,8 +260,8 @@ describe('add node', () => {
         expect(o).toEqual([14,0])
         expect(o2).toEqual([28,0])
         expect(o3).toEqual([42,0])
-        
     })
+    */
     
 })
 
@@ -157,10 +284,6 @@ describe('perturbWeights', () => {
     })
 })
 
-describe('utils', () => {
-
-})
-
 describe('innovationNumber', () => {
     test('diff innnovationnumber copy', () => {
         const nInp = 2
@@ -172,6 +295,7 @@ describe('innovationNumber', () => {
         const g2 = g1.copy()
         g2.addConnection(0,3,2)
         expect(g1.connections[0][2].innovationNumber).toEqual(4)
+        expect(g2.connections[0][2].innovationNumber).toEqual(4)
         expect(g2.connections[0][3].innovationNumber).toEqual(5)
     })
 
@@ -320,5 +444,24 @@ describe('numGenes', () => {
         g2.connections[0][2].weight = 5
         expect(g1.numGenes).toEqual(2)
         expect(g2.numGenes).toEqual(3)
+    })
+})
+
+describe('copy', () => {
+    test('copy1', () => {
+        const g = networkFactory(2,2)
+        g.addConnection(0,2,2)
+        g.addNode(0,2,Linear)
+        g.addNode(0,5,Linear)
+        g.addNode(8,5,Linear)
+        g.addNode(5,2,Linear)
+        g.addConnection(1,3,2)
+        g.addNode(1,3,Linear)
+        g.connections[5][2].toggleDisabled()
+        
+        const g2 = g.copy()
+        const o = g.forward([1,1])
+        const o2 = g2.forward([1,1])
+        expect(o).toEqual(o2)
     })
 })

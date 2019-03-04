@@ -1,7 +1,7 @@
 import Genome from './Genome'
 import Species from './Species'
 import {InnovationNumberGenerator} from './InnovationNumberGenerator'
-import {randomKey, uniformRandom, Sigmoid} from './Utils'
+import {randomKey, uniformRandom, Sigmoid} from './../Utils'
 import { Connection } from './Connection';
 import { fitness } from './neat';
 
@@ -43,11 +43,17 @@ export default class Population {
         stagnationThreshold: number
         )
     {
-        this.removeBadGenomes(survivalRate, stagnationThreshold)
+        this.removeBadGenomes(survivalRate, stagnationThreshold, () => {
+            this.members = this.members.splice(0, this.members.length*survivalRate << 0)
+            this.members.forEach(m => m.alive = true)
+            this.species = []
+            this.evalPop(iters, fitnessFunction, speciesThreshold)
+        })
         let newPop: Genome[] = [this.best.copy()]
-        
+        this.best.alive = true
+
         // elitism
-        for(let i = 0; i < 4; i++)
+        for(let i = 0; i < Math.min(4, this.members.length); i++)
         {
             newPop.push(this.members[i].copy())
         }
@@ -55,10 +61,12 @@ export default class Population {
         //species champions
         this.species.forEach(s => {
             if(s.members.length >= 5)
+            { 
                 newPop.push(s.members[0].copy())
+            }
         })
 
-        this.getNonCrossOvers((this.popSize/8) << 0, newNodeProb, newConnectionProb, weightPerturbProb, weightPerturbAmount)
+        this.getNonCrossOvers((this.popSize/4) << 0, newNodeProb, newConnectionProb, weightPerturbProb, weightPerturbAmount)
             .forEach(m => newPop.push(m))
 
         // get crossovers
@@ -95,6 +103,39 @@ export default class Population {
         this.printStats()
     }
 
+    nextGenerationNoSpecies(
+        iters: number, 
+        fitnessFunction: (g: Genome, i: number) => number, 
+        newConnectionProb: number,
+        newNodeProb: number,
+        weightPerturbAmount: number,
+        weightPerturbProb: number,
+        survivalRate: number
+        )
+    {
+        this.members = this.members.splice(0, this.members.length*survivalRate << 0)
+        let newPop: Genome[] = [this.best.copy()]
+        
+        // elitism
+        for(let i = 0; i < 4; i++)
+        {
+            newPop.push(this.members[i].copy())
+        }
+
+        this.getNonCrossOvers(this.popSize - newPop.length, newNodeProb, newConnectionProb, weightPerturbProb, weightPerturbAmount)
+            .forEach(m => newPop.push(m))
+
+        this.members = newPop
+        this.evalPopNoSpecies(iters, fitnessFunction)
+    }
+
+    evalPopNoSpecies(iters, fitnessFunction)
+    {
+        this.calcFitnesses(iters, fitnessFunction)
+        this.members.sort((a,b) => a.fitness < b.fitness ? 1 : -1)
+        this.printStats()
+    }
+
     printStats() 
     {
         console.log("-----------------------------------")
@@ -105,7 +146,7 @@ export default class Population {
         console.log("-----------------------------------")
     }
 
-    removeBadGenomes(survivalRate: number, stagnationThreshold: number)
+    removeBadGenomes(survivalRate: number, stagnationThreshold: number, onReset: any)
     {
         this.species.forEach(s => {
             if (s.stagnationCount > stagnationThreshold) {
@@ -114,22 +155,32 @@ export default class Population {
                 s.markBadGenomes(survivalRate)
             }
         })
-        this.members.filter(m => m.alive)
-        this.species.filter(s => s.stagnationCount <= 15)
+
+        if(this.members.reduce((total, m) => total + Number(m.alive), 0) == 0)
+        {
+            onReset()
+        }
+        else
+        {
+            this.members = this.members.filter(m => m.alive)
+            this.species = this.species.filter(s => s.stagnationCount <= stagnationThreshold)
+        }
     }
 
     getNonCrossOvers(n : number, newNodeProb, newConnectionProb, weightPerterbProb, weightPerturbAmount){
         let nonCrossovers = []
         for(let i = 0; i < n; i++)
         {
-            const n = Math.random()*this.members.length << 0
-            nonCrossovers.push(this.members[n].copy())
+            const x = Math.random()*this.members.length << 0
+            nonCrossovers.push(this.members[x].copy())
         }
         this.addRandomNodes(nonCrossovers, newNodeProb)
         this.addRandomConnections(nonCrossovers, newConnectionProb)
         for(let g of nonCrossovers) {
-            if(Math.random() < weightPerterbProb)
+            if(Math.random() < weightPerterbProb) {
                 g.perturbWeights(weightPerturbAmount)
+                g.perturbBias(weightPerturbAmount/4)
+            }
         }
         return nonCrossovers
     }
@@ -225,7 +276,7 @@ export default class Population {
         this.species.forEach(s => s.reset())
         const speciateMember = (m: Genome): void => {
             for(const s of this.species){
-                if(Genome.delta(m,s.representative, 1, 3) < threshold) {
+                if(Genome.delta(m,s.representative, 1, 1) < threshold) {
                     s.addGenome(m)
                     return
                 }

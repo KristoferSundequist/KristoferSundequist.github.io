@@ -1,5 +1,5 @@
 import {Gene} from './Gene'
-import {uniformRandom} from './Utils'
+import {uniformRandom} from './../Utils'
 
 export class Connection extends Gene {
     weight: number
