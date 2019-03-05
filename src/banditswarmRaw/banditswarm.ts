@@ -3,14 +3,15 @@ import {IGame} from './../IGame'
 import {sleep} from '../Utils'
 import {context, canvas_width, canvas_height} from './../index'
 import { Model } from './Model';
+import { Logger } from './Logger'
 
-export const model = new Model(Game.action_space_size, Game.action_space_size, 16)
+export const model = new Model(Game.action_space_size, Game.action_space_size, 32)
+export const logger = new Logger(0.9)
 
 export function train(iters: number, decay: number, epsilon: number = 0)
 {
     let g = new Game(context, canvas_width, canvas_height);
     let reward_count = 0
-    let reward_log = []
     let time = performance.now()
     for(let i = 0; i < iters; i++)
     {
@@ -23,8 +24,13 @@ export function train(iters: number, decay: number, epsilon: number = 0)
         if (i != 0 && i % 3000 == 0) {
             const new_time = performance.now()
             g = new Game(context, canvas_width, canvas_height);
-            reward_log.push(reward_count)
-            console.log((i/iters)*100, "%", "reward:", reward_count, "time elapsed:", new_time - time)
+            logger.push(reward_count)
+            console.log(
+                (i/iters)*100, "%",
+                "reward:", reward_count,
+                "time elapsed:", new_time - time,
+                "running avg reward:", logger.getRunningAvg()
+            )
 
             time = new_time
             reward_count = 0

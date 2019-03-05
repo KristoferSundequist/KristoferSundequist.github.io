@@ -201,30 +201,71 @@ class FullyConnectedLayer {
         this.nOutputs = nOutputs;
         this.activation = activation;
         this.weights = this.initWeights(nInputs, nOutputs, numPossibleWeights);
+        this.biases = this.initBiases(nOutputs, numPossibleWeights);
     }
     initWeights(nInputs, nOutputs, numPossibleWeights) {
-        const initWeights = [];
-        for (let i = 0; i < nInputs; i++) {
-            const wi = Object(_Utils__WEBPACK_IMPORTED_MODULE_1__["Range"])(nOutputs).map(_ => new _Weight__WEBPACK_IMPORTED_MODULE_0__["Weight"](numPossibleWeights));
-            initWeights.push(wi);
-        }
-        return initWeights;
+        return Object(_Utils__WEBPACK_IMPORTED_MODULE_1__["Range"])(nInputs).map(_ => Object(_Utils__WEBPACK_IMPORTED_MODULE_1__["Range"])(nOutputs).map(_ => new _Weight__WEBPACK_IMPORTED_MODULE_0__["Weight"](numPossibleWeights)));
+    }
+    initBiases(nOutputs, numPossibleWeights) {
+        return Object(_Utils__WEBPACK_IMPORTED_MODULE_1__["Range"])(nOutputs).map(_ => new _Weight__WEBPACK_IMPORTED_MODULE_0__["Weight"](numPossibleWeights));
     }
     update(reward, decay) {
+        // update weights
         for (let wi of this.weights) {
             for (let wij of wi) {
                 wij.update(reward, decay);
             }
         }
+        // update biases
+        this.biases.forEach(w => w.update(reward, decay));
     }
     forward(input) {
         let output = Object(_Utils__WEBPACK_IMPORTED_MODULE_1__["Range"])(this.nOutputs).map(_ => 0);
+        // do weight calc
         for (let i = 0; i < this.nInputs; i++) {
             for (let j = 0; j < this.nOutputs; j++) {
                 output[j] += this.weights[i][j].forward(input[i]);
             }
         }
+        // apply bias
+        for (let i = 0; i < this.nOutputs; i++) {
+            output[i] += this.biases[i].forward(1);
+        }
         return output.map(this.activation);
+    }
+}
+
+
+/***/ }),
+
+/***/ "./src/banditswarmRaw/Logger.ts":
+/*!**************************************!*\
+  !*** ./src/banditswarmRaw/Logger.ts ***!
+  \**************************************/
+/*! exports provided: Logger */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Logger", function() { return Logger; });
+class Logger {
+    constructor(decay) {
+        this.reward_log = [];
+        this.running_avg_reward = 0;
+        this.decay = decay;
+    }
+    push(reward) {
+        this.reward_log.push(reward);
+        this.running_avg_reward = this.decay * this.running_avg_reward + (1 - this.decay) * reward;
+    }
+    getRunningAvg() {
+        return this.running_avg_reward;
+    }
+    getLatest() {
+        if (this.reward_log == []) {
+            return NaN;
+        }
+        return this.reward_log[this.reward_log.length - 1];
     }
 }
 
@@ -370,18 +411,20 @@ class Weight {
 /*!*******************************************!*\
   !*** ./src/banditswarmRaw/banditswarm.ts ***!
   \*******************************************/
-/*! exports provided: model, train, agent_loop */
+/*! exports provided: model, logger, train, agent_loop */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "model", function() { return model; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "logger", function() { return logger; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "train", function() { return train; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "agent_loop", function() { return agent_loop; });
 /* harmony import */ var _games_game_slide_Game__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./../games/game_slide/Game */ "./src/games/game_slide/Game.ts");
 /* harmony import */ var _Utils__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../Utils */ "./src/Utils.ts");
 /* harmony import */ var _index__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./../index */ "./src/index.ts");
 /* harmony import */ var _Model__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./Model */ "./src/banditswarmRaw/Model.ts");
+/* harmony import */ var _Logger__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./Logger */ "./src/banditswarmRaw/Logger.ts");
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -394,11 +437,12 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 
-const model = new _Model__WEBPACK_IMPORTED_MODULE_3__["Model"](_games_game_slide_Game__WEBPACK_IMPORTED_MODULE_0__["Game"].action_space_size, _games_game_slide_Game__WEBPACK_IMPORTED_MODULE_0__["Game"].action_space_size, 16);
+
+const model = new _Model__WEBPACK_IMPORTED_MODULE_3__["Model"](_games_game_slide_Game__WEBPACK_IMPORTED_MODULE_0__["Game"].action_space_size, _games_game_slide_Game__WEBPACK_IMPORTED_MODULE_0__["Game"].action_space_size, 32);
+const logger = new _Logger__WEBPACK_IMPORTED_MODULE_4__["Logger"](0.9);
 function train(iters, decay, epsilon = 0) {
     let g = new _games_game_slide_Game__WEBPACK_IMPORTED_MODULE_0__["Game"](_index__WEBPACK_IMPORTED_MODULE_2__["context"], _index__WEBPACK_IMPORTED_MODULE_2__["canvas_width"], _index__WEBPACK_IMPORTED_MODULE_2__["canvas_height"]);
     let reward_count = 0;
-    let reward_log = [];
     let time = performance.now();
     for (let i = 0; i < iters; i++) {
         //const action = (Math.random() < epsilon) ? (Math.random()*Game.action_space_size << 0) : model.act_softmax(g.getState())
@@ -409,8 +453,8 @@ function train(iters, decay, epsilon = 0) {
         if (i != 0 && i % 3000 == 0) {
             const new_time = performance.now();
             g = new _games_game_slide_Game__WEBPACK_IMPORTED_MODULE_0__["Game"](_index__WEBPACK_IMPORTED_MODULE_2__["context"], _index__WEBPACK_IMPORTED_MODULE_2__["canvas_width"], _index__WEBPACK_IMPORTED_MODULE_2__["canvas_height"]);
-            reward_log.push(reward_count);
-            console.log((i / iters) * 100, "%", "reward:", reward_count, "time elapsed:", new_time - time);
+            logger.push(reward_count);
+            console.log((i / iters) * 100, "%", "reward:", reward_count, "time elapsed:", new_time - time, "running avg reward:", logger.getRunningAvg());
             time = new_time;
             reward_count = 0;
         }
