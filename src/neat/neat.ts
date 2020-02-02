@@ -1,6 +1,6 @@
 import Genome from './Genome'
 //import {Game} from './../games/game_enemy_slide/Game'
-import {Game} from './../games/simple_game/Game'
+import {Game} from './../games/super_simple_game_slide/Game'
 import {context, canvas_width, canvas_height} from './../index'
 import Population from './Population'
 import * as Utils from './../Utils'

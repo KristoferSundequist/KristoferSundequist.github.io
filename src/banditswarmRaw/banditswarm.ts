@@ -1,27 +1,27 @@
-import {Game} from './../games/game_slide/Game'
+import {Game} from './../games/super_simple_game/Game'
 import {IGame} from './../IGame'
 import {sleep} from '../Utils'
 import {context, canvas_width, canvas_height} from './../index'
 import { Model } from './Model';
-import { Logger } from './Logger'
+import { Logger } from './../Logger'
 
-export const model = new Model(Game.action_space_size, Game.action_space_size, 32)
-export const logger = new Logger(0.9)
+export const model = new Model(Game.state_space_size, Game.action_space_size, 16)
+export const logger = new Logger(0.99)
 
 export function train(iters: number, decay: number, epsilon: number = 0)
 {
     let g = new Game(context, canvas_width, canvas_height);
     let reward_count = 0
     let time = performance.now()
+
     for(let i = 0; i < iters; i++)
     {
-        //const action = (Math.random() < epsilon) ? (Math.random()*Game.action_space_size << 0) : model.act_softmax(g.getState())
-        const action = model.act_Q(g.getState())
+        const action = model.act_softmax(g.getState())
         const reward = g.step(action)
-        model.update(reward*(1/(1-decay)), decay)
+        model.update(reward, decay)
 
         reward_count += reward
-        if (i != 0 && i % 3000 == 0) {
+        if (i != 0 && i % 500 == 0) {
             const new_time = performance.now()
             g = new Game(context, canvas_width, canvas_height);
             logger.push(reward_count)
@@ -38,17 +38,19 @@ export function train(iters: number, decay: number, epsilon: number = 0)
     }
 }
 
-export async function agent_loop(iters: number, epsilon: number = 0)
+export async function agent_loop(iters: number, verbose: boolean = false, sleepTime: number = 10)
 {
     const g = new Game(context, canvas_width, canvas_height);
     
     for(let i = 0; i < iters; i++)
     {
-        //const action = (Math.random() < epsilon) ? (Math.random()*Game.action_space_size << 0) : model.act_softmax(g.getState())
-        const action = model.act_Q(g.getState())
+        const action = model.act_softmax(g.getState())
         const reward = g.step(action)
+        if (verbose) {
+            console.log(reward)
+        }
 
         g.render()
-        await sleep(10)
+        await sleep(sleepTime)
     }
 }

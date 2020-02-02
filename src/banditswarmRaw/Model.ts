@@ -7,9 +7,9 @@ export class Model {
 
     constructor (nInputs: number, nOutputs: number, weightBuckets: number) {
         this.network = new Network()
-        this.network.addLayer(new FullyConnectedLayer(nInputs, 64, weightBuckets, Math.tanh))
-        this.network.addLayer(new FullyConnectedLayer(64, 64, weightBuckets, Math.tanh))
-        this.network.addLayer(new FullyConnectedLayer(64, nOutputs, weightBuckets, n => n))
+        this.network.addLayer(new FullyConnectedLayer(nInputs, 32, weightBuckets, Math.tanh))
+        this.network.addLayer(new FullyConnectedLayer(32, 32, weightBuckets, Math.tanh))
+        this.network.addLayer(new FullyConnectedLayer(32, nOutputs, weightBuckets, n => n))
     }
 
     forward(n: number[]): number[]

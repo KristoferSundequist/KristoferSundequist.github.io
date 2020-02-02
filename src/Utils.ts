@@ -32,8 +32,14 @@ export function multinomial(probs: number[]): number
 
 export function softmax(input: number[]): number[]
 {
-    const sum = input.reduce((acc, v) => Math.exp(v) + acc, 0)
-    return input.map(v => Math.exp(v)/sum)
+    const expsum = input.reduce((acc, v) => Math.exp(v) + acc, 0)
+    return input.map(v => Math.exp(v)/expsum)
+}
+
+export function normalize(input: number[]): number[]
+{
+    const sum = input.reduce((acc, v) => v + acc, 0)
+    return input.map(v => v/sum)
 }
 
 export const logit = (p: number): number => Math.log(p/(1-p))

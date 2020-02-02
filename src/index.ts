@@ -1,8 +1,7 @@
 //import { BuildWorker, Calc } from './worker';
-//import * as ppo from './ppo/ppo'
-//import * as neat from './neat/neat'
+import * as ppo from './ppo/ppo'
+import * as neat from './neat/neat'
 import * as banditswarm from './banditswarmRaw/banditswarm'
-
 import * as utils from './Utils'
 
 export const canvas_width = 700;
@@ -15,7 +14,17 @@ canv.width = canvas_width;
 canv.style.border = "thick solid black";
 document.body.appendChild(canv);
 
-//(window as any).ppo = ppo;
-//(window as any).neat = neat;
+const chartCanv=document.createElement("canvas");
+export const chartContext = chartCanv.getContext("2d");
+chartCanv.id = "chartCanv";
+chartCanv.height = canvas_height;
+chartCanv.width = canvas_width;
+chartCanv.style.border = "thick solid black";
+document.body.appendChild(chartCanv);
+
+
+
+(window as any).ppo = ppo;
+(window as any).neat = neat;
 (window as any).banditswarm = banditswarm;
 (window as any).utils = utils;
